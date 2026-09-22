@@ -1,4 +1,72 @@
 <!DOCTYPE html>
-<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Catálogo | Ferretería Guillermo</title><link rel="stylesheet" href="css/style.css"></head>
-<body><header class="header"><div class="container nav"><a class="brand" href="index.html">🔧 Ferretería <b>Guillermo</b></a><button class="menu-toggle" id="menuToggle">☰</button><nav id="mainNav"><a href="index.html">Inicio</a><a class="active" href="catalogo.html">Catálogo</a><a href="cotizacion.html">Cotización</a><a href="pagos.html">Pagos</a><a href="admin.html">Administración</a></nav><a class="cart-button" href="cotizacion.html">🛒 <span id="cartCount">0</span></a></div></header>
-<main><section class="page-hero"><div class="container"><span class="eyebrow">FERRETERÍA GUILLERMO</span><h1>Catálogo de productos</h1><p>Encuentra productos por nombre, categoría o precio.</p></div></section><section class="section container"><div class="catalog-toolbar"><div class="search-box">🔎<input id="searchInput" placeholder="Buscar producto..."></div><select id="categoryFilter"><option value="Todos">Todas las categorías</option><option>Herramientas</option><option>Electricidad</option><option>Pintura</option><option>Construcción</option></select><select id="sortFilter"><option value="default">Ordenar</option><option value="low">Precio menor</option><option value="high">Precio mayor</option><option value="name">Nombre A-Z</option></select></div><div class="catalog-layout"><aside class="filter-panel"><h3>Filtrar</h3><label>Precio máximo</label><input type="range" id="priceFilter" min="10" max="500" value="500"><div class="range-values"><span>S/ 10</span><b id="priceValue">S/ 500</b></div><hr><p class="muted">Selecciona un producto para agregarlo a tu cotización.</p></aside><div><div class="result-line"><span id="resultCount">0 productos</span><button class="text-link" id="clearFilters">Limpiar filtros</button></div><div class="product-grid" id="catalogProducts"></div></div></div></section></main><div id="toast" class="toast"></div><footer class="footer"><div class="copyright">© 2026 Ferretería Guillermo. Proyecto académico PFC.</div></footer><script src="js/app.js"></script><script src="js/productos.js"></script></body></html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Catálogo | Ferretería Guillermo</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container nav"><a class="brand" href="index.html">Ferretería <b>Guillermo</b></a><button
+                class="menu-toggle" id="menuToggle">☰</button>
+            <nav id="mainNav"><a href="index.html">Inicio</a><a class="active" href="catalogo.html">Catálogo</a><a
+                    href="cotizacion.html">Cotización</a><a href="pagos.html">Pagos</a><a
+                    href="admin.html">Administración</a></nav><a class="cart-button" href="cotizacion.html"><svg xmlns="http://w3.org" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="8" cy="21" r="1"/>
+  <circle cx="19" cy="21" r="1"/>
+  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+</svg><span
+                    id="cartCount">0</span></a>
+        </div>
+    </header>
+    <main>
+        <section class="page-hero">
+            <div class="container"><span class="eyebrow">FERRETERÍA GUILLERMO</span>
+                <h1>Catálogo de productos</h1>
+                <p>Encuentra productos por nombre, categoría o precio.</p>
+            </div>
+        </section>
+        <section class="section container">
+            <div class="catalog-toolbar">
+                <div class="search-box">🔎<input id="searchInput" placeholder="Buscar producto..."></div><select
+                    id="categoryFilter">
+                    <option value="Todos">Todas las categorías</option>
+                    <option>Herramientas</option>
+                    <option>Electricidad</option>
+                    <option>Pintura</option>
+                    <option>Construcción</option>
+                </select><select id="sortFilter">
+                    <option value="default">Ordenar</option>
+                    <option value="low">Precio menor</option>
+                    <option value="high">Precio mayor</option>
+                    <option value="name">Nombre A-Z</option>
+                </select>
+            </div>
+            <div class="catalog-layout">
+                <aside class="filter-panel">
+                    <h3>Filtrar</h3><label>Precio máximo</label><input type="range" id="priceFilter" min="10" max="500"
+                        value="500">
+                    <div class="range-values"><span>S/ 10</span><b id="priceValue">S/ 500</b></div>
+                    <hr>
+                    <p class="muted">Selecciona un producto para agregarlo a tu cotización.</p>
+                </aside>
+                <div>
+                    <div class="result-line"><span id="resultCount">0 productos</span><button class="text-link"
+                            id="clearFilters">Limpiar filtros</button></div>
+                    <div class="product-grid" id="catalogProducts"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <div id="toast" class="toast"></div>
+    <footer class="footer">
+        <div class="copyright">© 2026 Ferretería Guillermo. Proyecto académico PFC.</div>
+    </footer>
+    <script src="js/app.js"></script>
+    <script src="js/productos.js"></script>
+</body>
+
+</html>

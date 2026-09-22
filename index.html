@@ -9,7 +9,7 @@
 <body>
 <header class="header">
   <div class="container nav">
-    <a class="brand" href="index.html"><span class="brand-icon">🔧</span> Ferretería <b>Guillermo</b></a>
+    <a class="brand" href="index.html">Ferretería <b>Guillermo</b></a>
     <button class="menu-toggle" id="menuToggle">☰</button>
     <nav id="mainNav">
       <a class="active" href="index.html">Inicio</a>
@@ -18,7 +18,11 @@
       <a href="pagos.html">Pagos</a>
       <a href="admin.html">Administración</a>
     </nav>
-    <a class="cart-button" href="cotizacion.html">🛒 <span id="cartCount">0</span></a>
+    <a class="cart-button" href="cotizacion.html"><svg xmlns="http://w3.org" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="8" cy="21" r="1"/>
+  <circle cx="19" cy="21" r="1"/>
+  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+</svg><span id="cartCount">0</span></a>
   </div>
 </header>
 
@@ -37,7 +41,9 @@
       </div>
       <div class="hero-showcase">
         <div class="showcase-badge">🔥 OFERTA SEMANAL</div>
-        <div class="tool-illustration">🛠️</div>
+        <div class="tool-illustration">
+          <img src="/media/kit-herramientas.png" alt="kit de herramientas">
+        </div>
         <p>Kit profesional de herramientas</p>
         <div class="price-line"><strong>S/ 129.90</strong><del>S/ 159.90</del></div>
         <a href="catalogo.html" class="btn btn-primary full">Ver oferta</a>
@@ -48,10 +54,10 @@
   <section class="section container">
     <div class="section-heading"><div><span class="eyebrow">EXPLORA</span><h2>Compra por categoría</h2></div><a href="catalogo.html" class="text-link">Ver catálogo completo →</a></div>
     <div class="category-grid">
-      <a class="category-card" href="catalogo.html?cat=Herramientas"><span>🔨</span><h3>Herramientas</h3><p>Taladros, martillos y más</p></a>
-      <a class="category-card" href="catalogo.html?cat=Electricidad"><span>⚡</span><h3>Electricidad</h3><p>Cables, interruptores y accesorios</p></a>
-      <a class="category-card" href="catalogo.html?cat=Pintura"><span>🎨</span><h3>Pintura</h3><p>Pinturas, brochas y accesorios</p></a>
-      <a class="category-card" href="catalogo.html?cat=Construcción"><span>🧱</span><h3>Construcción</h3><p>Cemento y materiales</p></a>
+      <a class="category-card" href="catalogo.html?cat=Herramientas"><span><img src="/media/herramientas.webp" width=250 alt=""> </span><h3>Herramientas</h3><p>Taladros, martillos y más</p></a>
+      <a class="category-card" href="catalogo.html?cat=Electricidad"><span><img src="/media/interruptor.jpg" alt="" width=250> </span><h3>Electricidad</h3><p>Cables, interruptores y accesorios</p></a>
+      <a class="category-card" href="catalogo.html?cat=Pintura"><span><img src="/media/brochas.webp" width=250 alt=""> </span><h3>Pintura</h3><p>Pinturas, brochas y accesorios</p></a>
+      <a class="category-card" href="catalogo.html?cat=Construcción"><span><img src="/media/codo.jpg" alt="" width=250> </span><h3>Construcción</h3><p>Cemento y materiales</p></a>
     </div>
   </section>
 
@@ -79,7 +85,7 @@
   </section>
 </main>
 
-<footer class="footer"><div class="container footer-grid"><div><a class="brand light" href="index.html">🔧 Ferretería <b>Guillermo</b></a><p>Soluciones para construcción, mantenimiento y hogar.</p></div><div><h4>Enlaces</h4><a href="catalogo.html">Catálogo</a><a href="cotizacion.html">Cotización</a><a href="pagos.html">Pagos</a></div><div><h4>Contacto</h4><p>📍 Lima, Perú</p><p>📞 +51 999 999 999</p><p>✉ contacto@ferreteriaguillermo.com</p></div></div><div class="copyright">© 2026 Ferretería Guillermo. Proyecto académico PFC.</div></footer>
+<footer class="footer"><div class="container footer-grid"><div><a class="brand light" href="index.html">Ferretería <b>Guillermo</b></a><p>Soluciones para construcción, mantenimiento y hogar.</p></div><div><h4>Enlaces</h4><a href="catalogo.html">Catálogo</a><a href="cotizacion.html">Cotización</a><a href="pagos.html">Pagos</a></div><div><h4>Contacto</h4><p>📍 Lima, Perú</p><p>📞 +51 999 999 999</p><p>✉ contacto@ferreteriaguillermo.com</p></div></div><div class="copyright">© 2026 Ferretería Guillermo. Proyecto académico PFC.</div></footer>
 <script src="js/app.js"></script>
 <script src="js/productos.js"></script>
 </body>

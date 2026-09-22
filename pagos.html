@@ -1,1 +1,59 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Pagos | Ferretería Guillermo</title><link rel="stylesheet" href="css/style.css"></head><body><header class="header"><div class="container nav"><a class="brand" href="index.html">🔧 Ferretería <b>Guillermo</b></a><button class="menu-toggle" id="menuToggle">☰</button><nav id="mainNav"><a href="index.html">Inicio</a><a href="catalogo.html">Catálogo</a><a href="cotizacion.html">Cotización</a><a class="active" href="pagos.html">Pagos</a><a href="admin.html">Administración</a></nav><a class="cart-button" href="cotizacion.html">🛒 <span id="cartCount">0</span></a></div></header><main><section class="page-hero"><div class="container"><span class="eyebrow">PAGOS</span><h1>Opciones de pago</h1><p>Consulta las alternativas disponibles para tus compras.</p></div></section><section class="section container"><div class="payment-grid"><div class="payment-card"><span>💳</span><h2>Tarjeta</h2><p>Pago con tarjeta de débito o crédito.</p><div class="payment-icons">VISA · MASTERCARD</div></div><div class="payment-card"><span>📱</span><h2>Yape / Plin</h2><p>Realiza el pago desde tu celular.</p><div class="payment-code">QR</div></div><div class="payment-card"><span>🏦</span><h2>Transferencia</h2><p>Solicita los datos bancarios al momento de confirmar tu pedido.</p></div></div><div class="notice"><strong>Importante:</strong> esta versión es una interfaz demostrativa para el proyecto académico. La conexión con una pasarela de pagos real se implementaría en una etapa posterior.</div></section></main><footer class="footer"><div class="copyright">© 2026 Ferretería Guillermo. Proyecto académico PFC.</div></footer><script src="js/app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Pagos | Ferretería Guillermo</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container nav"><a class="brand" href="index.html">Ferretería <b>Guillermo</b></a><button
+                class="menu-toggle" id="menuToggle">☰</button>
+            <nav id="mainNav"><a href="index.html">Inicio</a><a href="catalogo.html">Catálogo</a><a
+                    href="cotizacion.html">Cotización</a><a class="active" href="pagos.html">Pagos</a><a
+                    href="admin.html">Administración</a></nav><a class="cart-button" href="cotizacion.html"><svg xmlns="http://w3.org" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="8" cy="21" r="1"/>
+  <circle cx="19" cy="21" r="1"/>
+  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+</svg><span
+                    id="cartCount">0</span></a>
+        </div>
+    </header>
+    <main>
+        <section class="page-hero">
+            <div class="container"><span class="eyebrow">PAGOS</span>
+                <h1>Opciones de pago</h1>
+                <p>Consulta las alternativas disponibles para tus compras.</p>
+            </div>
+        </section>
+        <section class="section container">
+            <div class="payment-grid">
+                <div class="payment-card"><img id="visa-mastercard" src="/media/visa-mastercard.jpg" alt="">
+                    <h2>Tarjeta</h2>
+                    <p>Pago con tarjeta de débito o crédito.</p>
+                    <div class="payment-icons">VISA · MASTERCARD</div>
+                </div>
+                <div class="payment-card"><img id="yape-plin" src="/media/yape-plin.jpg" alt="">
+                    <h2>Yape / Plin</h2>
+                    <p>Realiza el pago desde tu celular.</p>
+                    <div class="payment-code">QR</div>
+                </div>
+                <div class="payment-card"><img id="transferencia" src="/media/transferencia.png" alt="">
+                    <h2>Transferencia</h2>
+                    <p>Solicita los datos bancarios al momento de confirmar tu pedido.</p>
+                </div>
+            </div>
+            <div class="notice"><strong>Importante:</strong> esta versión es una interfaz demostrativa para el proyecto
+                académico. La conexión con una pasarela de pagos real se implementaría en una etapa posterior.</div>
+        </section>
+    </main>
+    <footer class="footer">
+        <div class="copyright">© 2026 Ferretería Guillermo. Proyecto académico PFC.</div>
+    </footer>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
