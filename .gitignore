@@ -1,0 +1,48 @@
+
+node_modules/
+/dist
+/build
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log* 
+
+### Variables de entorno frontend
+
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local 
+
+
+target/
+build/
+.gradle/
+/out/ 
+
+### Variables de entorno backend y archivos sensibles
+
+.env
+*.local.properties
+application-local.properties
+application-local.yml 
+
+### ==========================================
+
+### EDITORES DE CÓDIGO E IDEs
+
+### ==========================================
+
+### Visual Studio Code
+
+.vscode/
+!.vscode/extensions.json 
+
+### IntelliJ IDEA
+
+.idea/
+*.iml
+*.iws
+*.ipr 

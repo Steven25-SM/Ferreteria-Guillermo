@@ -1,17 +1,30 @@
-# Ferretería Guillermo
+# Ferretería Guillermo — React + Spring Boot + PostgreSQL
 
-Proyecto frontend académico para un PFC de TECSUP.
+## Estructura
+- `frontend/`: React + Vite
+- `backend/`: Spring Boot + JPA + PostgreSQL
 
-## Tecnologías
-- HTML5
-- CSS3
-- JavaScript vanilla
-- LocalStorage para simular el carrito/cotización
+## PostgreSQL
+Crear la base:
+```sql
+CREATE DATABASE ferreteria_guillermo;
+```
 
-## Cómo ejecutar
-1. Abre la carpeta en Visual Studio Code.
-2. Abre `index.html` directamente en el navegador o usa Live Server.
-3. Navega por Catálogo, Cotización, Pagos y Administración.
+Configurar usuario/contraseña en:
+`backend/src/main/resources/application.properties`
 
-## Nota
-Los datos, precios, métricas y contactos son demostrativos. La conexión con base de datos, autenticación y pasarela de pago puede implementarse posteriormente.
+## Backend
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+## Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend: http://localhost:5173  
+Backend: http://localhost:8080
