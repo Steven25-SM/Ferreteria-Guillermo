@@ -6,7 +6,11 @@ export default function ProductCard({ product }) {
   return (
     <article className="product-card">
       <div className="product-image">
-        {product.icon}
+        {product.imageUrl ? (
+          <img className="product-photo" src={product.imageUrl} alt={product.name} loading="lazy" />
+        ) : (
+          <div className="product-photo product-photo--placeholder">FG</div>
+        )}
         {product.oldPrice && <span className="discount">OFERTA</span>}
       </div>
       <div className="product-body">
@@ -18,7 +22,7 @@ export default function ProductCard({ product }) {
           {product.oldPrice && <del>S/ {Number(product.oldPrice).toFixed(2)}</del>}
         </div>
         <button className="btn btn-primary" onClick={() => addToCart(product)}>
-          Agregar a cotización
+          Agregar al carrito
         </button>
       </div>
     </article>

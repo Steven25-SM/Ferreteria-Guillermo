@@ -2,6 +2,7 @@ package com.ferreteriaguillermo.controller;
 
 import com.ferreteriaguillermo.dto.QuoteRequest;
 import com.ferreteriaguillermo.model.Quote;
+import com.ferreteriaguillermo.model.QuoteStatus;
 import com.ferreteriaguillermo.service.QuoteService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
@@ -30,4 +31,10 @@ public class QuoteController {
     public long count() {
         return service.count();
     }
+
+    @PatchMapping("/{id}/status")
+    public Quote updateStatus(@PathVariable Long id, @RequestParam QuoteStatus status) {
+        return service.updateStatus(id, status);
+    }
 }
+

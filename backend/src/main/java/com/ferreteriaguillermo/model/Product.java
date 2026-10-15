@@ -23,6 +23,7 @@ public class Product {
     private BigDecimal oldPrice;
 
     private String icon;
+    @Column(length = 1500000) private String imageUrl;
 
     private BigDecimal rating;
 
@@ -47,6 +48,7 @@ public class Product {
     public BigDecimal getPrice() { return price; }
     public BigDecimal getOldPrice() { return oldPrice; }
     public String getIcon() { return icon; }
+    public String getImageUrl() { return imageUrl; }
     public BigDecimal getRating() { return rating; }
     public boolean isFeatured() { return featured; }
 
@@ -56,6 +58,7 @@ public class Product {
     public void setPrice(BigDecimal price) { this.price = price; }
     public void setOldPrice(BigDecimal oldPrice) { this.oldPrice = oldPrice; }
     public void setIcon(String icon) { this.icon = icon; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public void setRating(BigDecimal rating) { this.rating = rating; }
     public void setFeatured(boolean featured) { this.featured = featured; }
 }

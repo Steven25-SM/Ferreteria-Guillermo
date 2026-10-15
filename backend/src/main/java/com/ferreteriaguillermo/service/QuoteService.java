@@ -80,4 +80,12 @@ public class QuoteService {
     public long count() {
         return quoteRepository.count();
     }
+
+    @Transactional
+    public Quote updateStatus(Long id, QuoteStatus status) {
+        Quote quote = quoteRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Cotización no encontrada."));
+        quote.setStatus(status);
+        return quoteRepository.save(quote);
+    }
 }

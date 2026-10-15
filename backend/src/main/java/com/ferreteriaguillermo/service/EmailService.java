@@ -4,6 +4,7 @@ import com.ferreteriaguillermo.model.Quote;
 import com.ferreteriaguillermo.model.QuoteItem;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
@@ -14,14 +15,19 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${app.mail.to}")
+    @Value("${app.mail.to:}")
     private String destinationEmail;
+
+    @Value("${app.mail.enabled:false}")
+    private boolean mailEnabled;
 
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
 
     public void sendQuoteNotification(Quote quote) {
+
+        if (!mailEnabled || destinationEmail == null || destinationEmail.isBlank()) return;
 
         String products = buildProductsText(quote);
 
@@ -74,7 +80,11 @@ public class EmailService {
 
         adminMessage.setText(adminBody.toString());
 
-        mailSender.send(adminMessage);
+        try {
+            mailSender.send(adminMessage);
+        } catch (MailException ex) {
+            return;
+        }
 
 
         // =========================================================
@@ -126,7 +136,11 @@ public class EmailService {
 
         clientMessage.setText(clientBody.toString());
 
-        mailSender.send(clientMessage);
+        try {
+            mailSender.send(clientMessage);
+        } catch (MailException ignored) {
+            // La cotización ya fue registrada; el correo no debe invalidarla.
+        }
     }
 
     private String buildProductsText(Quote quote) {

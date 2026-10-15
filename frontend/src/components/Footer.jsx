@@ -9,8 +9,8 @@ export default function Footer() {
         <div>
           <h4>Enlaces</h4>
           <a href="/catalogo">Catálogo</a>
-          <a href="/cotizacion">Cotización</a>
-          <a href="/pagos">Pagos</a>
+          <a href="/carrito">Carrito</a>
+          <a href="/mis-pedidos">Mis pedidos</a>
         </div>
         <div>
           <h4>Contacto</h4>
