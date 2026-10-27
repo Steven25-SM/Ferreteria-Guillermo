@@ -1,601 +1,233 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import api from '../services/api'
-import { useAuth } from '../context/AuthContext'
-
-const emptyProduct = {
-  imageUrl: '',
-  name: '',
-  category: 'Herramientas',
-  price: '',
-  oldPrice: '',
-  rating: '4.5',
-  featured: false
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Boxes, ShoppingBasket, ClipboardList, BarChart3, Settings, Package, Plus, Search, Camera, ArrowDownToLine, ArrowUpFromLine, ScanLine, AlertTriangle, Menu, X, LogOut, Trash2, Edit3 } from 'lucide-react';
+import { api, getError } from '../lib/api';
+import { adminApi } from '../lib/adminApi';
+import { useAdminAuth } from '../components/AdminAuthContext';
+import Brand from '../components/Brand';
+import QuickSale from '../components/QuickSale';
+const menu = [['Resumen', LayoutDashboard], ['Inventario', Boxes], ['Registrar venta', ShoppingBasket], ['Pedidos', ClipboardList]];
+const blank = { name: '', sku: '', description: '', price: '', categoryId: '', imageUrl: '', initialStock: '0', minimumStock: '5' };
+function money(n) { return 'S/ ' + Number(n || 0).toFixed(2); }
+export default function Admin() { const [tab, setTab] = useState('Inventario'); const [products, setProducts] = useState([]); const [categories, setCategories] = useState([]); const [orders, setOrders] = useState([]); const [search, setSearch] = useState(''); const [modal, setModal] = useState(false); const [editing, setEditing] = useState(null); const [form, setForm] = useState(blank); const [message, setMessage] = useState(''); const [error, setError] = useState(''); const [menuOpen, setMenuOpen] = useState(false); const [working, setWorking] = useState(false); const [adjust, setAdjust] = useState(null); const [qty, setQty] = useState('1'); const [sale, setSale] = useState({ productId: '', quantity: '1', paymentMethod: 'CASH' }); const [photo, setPhoto] = useState(null); const [photoResults, setPhotoResults] = useState([]); const { admin: user, logoutAdmin: logout } = useAdminAuth(); const navigate = useNavigate(); async function load() { try {
+    const [p, c, o] = await Promise.all([adminApi.get('/admin/products'), api.get('/categories'), adminApi.get('/admin/orders')]);
+    setProducts(p.data);
+    setCategories(c.data);
+    setOrders(o.data);
 }
-
-const statusMeta = {
-  PENDING_PAYMENT: { label: 'Esperando pago', tone: 'slate' },
-  PAYMENT_REVIEW: { label: 'Verificar Yape', tone: 'violet' },
-  PAYMENT_REJECTED: { label: 'Pago rechazado', tone: 'red' },
-  PAID: { label: 'Pagado', tone: 'green' },
-  PREPARING: { label: 'Preparando', tone: 'orange' },
-  READY: { label: 'Listo para recoger', tone: 'blue' },
-  DELIVERED: { label: 'Entregado', tone: 'teal' }
+catch (e) {
+    setError(getError(e));
+} } useEffect(() => { load(); }, []); const shown = useMemo(() => products.filter(p => (p.name + ' ' + p.sku).toLowerCase().includes(search.toLowerCase())), [products, search]); const low = products.filter(p => p.stock <= p.minimumStock); async function act(fn, success) { setWorking(true); setError(''); setMessage(''); try {
+    await fn();
+    setMessage(success);
+    await load();
+    setModal(false);
+    setAdjust(null);
+    return true;
 }
-
-const quoteStatusLabel = {
-  PENDING: 'Pendiente',
-  APPROVED: 'Aprobada',
-  PAID: 'Pagada'
+catch (e) {
+    setError(getError(e));
+    return false;
 }
-
-const orderNextActions = {
-  PAID: { value: 'PREPARING', label: 'Pasar a preparando' },
-  PREPARING: { value: 'READY', label: 'Marcar como listo' },
-  READY: { value: 'DELIVERED', label: 'Marcar como entregado' }
-}
-
-const menuItems = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'orders', label: 'Pedidos' },
-  { key: 'products', label: 'Productos' },
-  { key: 'profile', label: 'Perfil' }
-]
-
-function formatCurrency(value) {
-  return `S/ ${Number(value || 0).toFixed(2)}`
-}
-
-function formatDate(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleString('es-PE', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  })
-}
-
-export default function Admin() {
-  const navigate = useNavigate()
-  const { user, logout, updateProfile } = useAuth()
-  const [activeView, setActiveView] = useState('dashboard')
-  const [products, setProducts] = useState([])
-  const [orders, setOrders] = useState([])
-  const [yapeConfig, setYapeConfig] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState(emptyProduct)
-  const [toast, setToast] = useState('')
-  const [error, setError] = useState('')
-  const [rejectingId, setRejectingId] = useState(null)
-  const [rejectNote, setRejectNote] = useState('')
-  const [savingProfile, setSavingProfile] = useState(false)
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name || '',
-    phone: user?.phone || '',
-    avatarUrl: user?.avatarUrl || ''
-  })
-
-  useEffect(() => {
-    setProfileForm({
-      name: user?.name || '',
-      phone: user?.phone || '',
-      avatarUrl: user?.avatarUrl || ''
-    })
-  }, [user])
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      const [p, o, pay] = await Promise.all([
-        api.get('/products'),
-        api.get('/admin/orders'),
-        api.get('/payments/config')
-      ])
-      setProducts(p.data)
-      setOrders(o.data)
-      setYapeConfig(pay.data)
-      setError('')
-    } catch {
-      setError('No se pudieron cargar los datos del panel administrativo.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [])
-
-  const notify = (message) => {
-    setToast(message)
-    setTimeout(() => setToast(''), 2500)
-  }
-
-  const openNew = () => {
-    setEditing('new')
-    setForm(emptyProduct)
-  }
-
-  const openEdit = (product) => {
-    setEditing(product.id)
-    setForm({
-      name: product.name,
-      imageUrl: product.imageUrl || '',
-      category: product.category,
-      price: product.price,
-      oldPrice: product.oldPrice || '',
-      rating: product.rating || '4.5',
-      featured: product.featured
-    })
-  }
-
-  const handleProductImage = (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 1024 * 1024) {
-      setError('La imagen debe ser JPG, PNG o WebP y pesar máximo 1 MB.')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => setForm(old => ({ ...old, imageUrl: String(reader.result || '') }))
-    reader.readAsDataURL(file)
-  }
-
-  const saveProduct = async (e) => {
-    e.preventDefault()
-    setError('')
-    const payload = {
-      ...form,
-      price: Number(form.price),
-      oldPrice: form.oldPrice ? Number(form.oldPrice) : null,
-      rating: Number(form.rating)
-    }
-    try {
-      if (editing === 'new') await api.post('/products', payload)
-      else await api.put(`/products/${editing}`, payload)
-      setEditing(null)
-      notify(editing === 'new' ? 'Producto registrado correctamente.' : 'Producto actualizado correctamente.')
-      await load()
-    } catch (err) {
-      setError(err.response?.data?.message || 'No se pudo guardar el producto.')
-    }
-  }
-
-  const removeProduct = async (product) => {
-    if (!window.confirm(`¿Eliminar “${product.name}”?`)) return
-    try {
-      await api.delete(`/products/${product.id}`)
-      notify('Producto eliminado del catálogo.')
-      await load()
-    } catch (err) {
-      setError(err.response?.data?.message || 'No se pudo eliminar. Puede estar asociado a una venta o cotización.')
-    }
-  }
-
-  const updateOrder = async (id, type, action, note = '') => {
-    try {
-      await api.patch(
-        type === 'payment' ? `/admin/orders/${id}/payment` : `/admin/orders/${id}/fulfillment`,
-        type === 'payment' ? { note } : null,
-        { params: type === 'payment' ? { action } : { status: action } }
-      )
-      setRejectingId(null)
-      setRejectNote('')
-      notify('Pedido actualizado correctamente.')
-      await load()
-    } catch (err) {
-      setError(err.response?.data?.message || 'No se pudo actualizar el pedido.')
-    }
-  }
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/admin/login')
-  }
-
-  const uploadAvatar = (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setProfileForm(current => ({ ...current, avatarUrl: String(reader.result || '') }))
-    reader.readAsDataURL(file)
-  }
-
-  const saveProfile = async (e) => {
-    e.preventDefault()
-    setSavingProfile(true)
-    setError('')
-    try {
-      await updateProfile(profileForm)
-      notify('Perfil del administrador actualizado.')
-    } catch (err) {
-      setError(err.response?.data?.message || 'No se pudo guardar el perfil.')
-    } finally {
-      setSavingProfile(false)
-    }
-  }
-
-  const stats = useMemo(() => {
-    const paidStatuses = ['PAID', 'PREPARING', 'READY', 'DELIVERED']
-    const revenue = orders.filter(order => paidStatuses.includes(order.status)).reduce((sum, order) => sum + Number(order.total || 0), 0)
-    const pendingReview = orders.filter(order => order.status === 'PAYMENT_REVIEW').length
-    const inProgress = orders.filter(order => ['PAID', 'PREPARING', 'READY'].includes(order.status)).length
-    const delivered = orders.filter(order => order.status === 'DELIVERED').length
-    return { revenue, pendingReview, inProgress, delivered }
-  }, [orders])
-
-  const categoryData = useMemo(() => {
-    const map = {}
-    for (const product of products) map[product.category] = (map[product.category] || 0) + 1
-    const max = Math.max(...Object.values(map), 1)
-    return Object.entries(map).map(([label, value]) => ({ label, value, percentage: (value / max) * 100 }))
-  }, [products])
-
-  const statusData = useMemo(() => {
-    const map = {}
-    for (const order of orders) {
-      const label = statusMeta[order.status]?.label || order.status
-      map[label] = (map[label] || 0) + 1
-    }
-    const max = Math.max(...Object.values(map), 1)
-    return Object.entries(map).map(([label, value]) => ({ label, value, percentage: (value / max) * 100 }))
-  }, [orders])
-
-  const pendingBadge = stats.pendingReview > 0 ? stats.pendingReview : ''
-  const activeTitle = menuItems.find(item => item.key === activeView)?.label || 'Dashboard'
-  const initials = (user?.name || 'FG').split(' ').map(word => word[0]).slice(0, 2).join('').toUpperCase()
-
-  return (
-    <main className="admin-shell">
-      <aside className="admin-sidebar">
-        <div className="admin-brand-block">
-          <span className="admin-brand-logo">FG</span>
-          <div>
-            <small>Ferretería</small>
-            <strong>Guillermo</strong>
-          </div>
-        </div>
-
-        <div className="admin-profile-card compact">
-          <div className="admin-avatar-wrap">
-            {profileForm.avatarUrl ? <img src={profileForm.avatarUrl} alt="Foto de perfil del administrador" /> : <span>{initials}</span>}
-          </div>
-          <h3>Administrador</h3>
-        </div>
-
-        <nav className="admin-menu">
-          {menuItems.map(item => (
-            <button key={item.key} className={`admin-menu-item ${activeView === item.key ? 'active' : ''}`} onClick={() => setActiveView(item.key)}>
-              <strong>{item.label}</strong>
-              {item.key === 'orders' && pendingBadge ? <b className="admin-badge">{pendingBadge}</b> : null}
-            </button>
-          ))}
-        </nav>
-
-        <div className="admin-sidebar-footer">
-          <Link className="btn btn-light full" to="/">Ver tienda</Link>
-          <button className="btn btn-primary full" onClick={handleLogout}>Cerrar sesión</button>
-        </div>
-      </aside>
-
-      <section className="admin-content">
-        <header className="admin-topbar">
-          <div>
-            <span className="eyebrow">PANEL ADMINISTRATIVO</span>
-            <h1>{activeTitle}</h1>
-            <p>Diseñado para operar la tienda sin mezclarlo con la interfaz de clientes.</p>
-          </div>
-          <div className="admin-topbar-actions">
-            <div className="admin-date-chip">{new Date().toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            <button className="btn btn-light" onClick={load}>{loading ? 'Actualizando…' : 'Actualizar datos'}</button>
-          </div>
-        </header>
-
-        {error && <div className="admin-error">⚠ {error}<button onClick={() => setError('')}>×</button></div>}
-
-        {activeView === 'dashboard' && (
-          <div className="admin-view-stack">
-            <section className="admin-stat-grid">
-              <article className="admin-stat-card accent-gold"><small>Ventas confirmadas</small><strong>{formatCurrency(stats.revenue)}</strong><span>Pedidos aprobados y en proceso</span></article>
-              <article className="admin-stat-card accent-purple"><small>Pagos por revisar</small><strong>{stats.pendingReview}</strong><span>Clientes esperando validación</span></article>
-              <article className="admin-stat-card accent-blue"><small>Pedidos activos</small><strong>{stats.inProgress}</strong><span>Pagados, preparando o listos</span></article>
-              <article className="admin-stat-card accent-teal"><small>Entregados</small><strong>{stats.delivered}</strong><span>Pedidos completados</span></article>
-            </section>
-
-            <section className="admin-overview-grid">
-              <article className="admin-panel-card">
-                <div className="admin-section-heading">
-                  <div>
-                    <h2>Vista rápida del negocio</h2>
-                    <p>Resumen para abrir el panel y entender qué requiere atención.</p>
-                  </div>
-                </div>
-                <div className="admin-mini-grid">
-                  <div><small>Productos en catálogo</small><strong>{products.length}</strong></div>
-                  <div><small>Productos destacados</small><strong>{products.filter(p => p.featured).length}</strong></div>
-                  <div><small>Pagos por verificar</small><strong>{stats.pendingReview}</strong></div>
-                  <div><small>Pedidos totales</small><strong>{orders.length}</strong></div>
-                </div>
-              </article>
-
-              <article className="admin-panel-card">
-                <div className="admin-section-heading">
-                  <div>
-                    <h2>Yape configurado</h2>
-                    <p>Datos que el cliente verá al momento de pagar.</p>
-                  </div>
-                </div>
-                <div className="admin-yape-summary">
-                  <div><small>Titular</small><strong>{yapeConfig.owner || 'No configurado'}</strong></div>
-                  <div><small>Celular</small><strong>{yapeConfig.phone || 'No configurado'}</strong></div>
-                  <div><small>QR</small><strong>{yapeConfig.qrUrl ? 'Cargado' : 'No cargado'}</strong></div>
-                </div>
-              </article>
-            </section>
-
-            <section className="admin-overview-grid wide">
-              <article className="admin-panel-card">
-                <div className="admin-section-heading">
-                  <div>
-                    <h2>Productos por categoría</h2>
-                    <p>Distribución actual del catálogo.</p>
-                  </div>
-                </div>
-                <div className="admin-bar-chart">
-                  {categoryData.length ? categoryData.map(item => (
-                    <div key={item.label} className="admin-bar-row">
-                      <div className="admin-bar-copy"><strong>{item.label}</strong><small>{item.value} productos</small></div>
-                      <div className="admin-bar-track"><span style={{ width: `${item.percentage}%` }} /></div>
-                    </div>
-                  )) : <div className="table-empty">Todavía no hay productos registrados.</div>}
-                </div>
-              </article>
-
-              <article className="admin-panel-card">
-                <div className="admin-section-heading">
-                  <div>
-                    <h2>Estados de pedidos</h2>
-                    <p>Ayuda a detectar cuellos de botella.</p>
-                  </div>
-                </div>
-                <div className="admin-bar-chart">
-                  {statusData.length ? statusData.map(item => (
-                    <div key={item.label} className="admin-bar-row">
-                      <div className="admin-bar-copy"><strong>{item.label}</strong><small>{item.value} pedidos</small></div>
-                      <div className="admin-bar-track alt"><span style={{ width: `${item.percentage}%` }} /></div>
-                    </div>
-                  )) : <div className="table-empty">Todavía no hay pedidos.</div>}
-                </div>
-              </article>
-            </section>
-          </div>
-        )}
-
-        {activeView === 'orders' && (
-          <div className="admin-view-stack">
-            <section className="admin-panel-card">
-              <div className="admin-section-heading">
-                <div>
-                  <h2>Pedidos y validación manual de Yape</h2>
-                  <p>La idea es que tu tío entienda rápido quién pagó, cuánto pagó y qué debe entregar.</p>
-                </div>
-              </div>
-              <div className="admin-order-list">
-                {orders.map(order => {
-                  const currentStatus = statusMeta[order.status] || { label: order.status, tone: 'slate' }
-                  const nextAction = orderNextActions[order.status]
-                  return (
-                    <article key={order.id} className="admin-order-card">
-                      <div className="admin-order-head">
-                        <div>
-                          <small>Pedido</small>
-                          <h3>FG-{String(order.id).padStart(6, '0')}</h3>
-                          <p>{formatDate(order.createdAt)}</p>
-                        </div>
-                        <span className={`admin-status-pill ${currentStatus.tone}`}>{currentStatus.label}</span>
-                      </div>
-
-                      <div className="admin-order-grid">
-                        <div>
-                          <small>Cliente</small>
-                          <strong>{order.customerName}</strong>
-                          <p>{order.customerEmail}<br />{order.customerPhone}</p>
-                        </div>
-                        <div>
-                          <small>Pago reportado</small>
-                          <strong>{order.payerName || 'Aún no reportado'}</strong>
-                          <p>Operación: {order.paymentReference || '—'}<br />{formatDate(order.paymentReportedAt)}</p>
-                        </div>
-                        <div>
-                          <small>Total</small>
-                          <strong>{formatCurrency(order.total)}</strong>
-                          <p>Artículos: {order.items?.length || 0}</p>
-                        </div>
-                      </div>
-
-                      <div className="admin-order-items">
-                        {(order.items || []).map(item => (
-                          <div key={item.id} className="admin-order-item-line">
-                            <span>{item.product.name}</span>
-                            <small>{item.quantity} × {formatCurrency(item.unitPrice)}</small>
-                            <strong>{formatCurrency(Number(item.unitPrice) * Number(item.quantity))}</strong>
-                          </div>
-                        ))}
-                      </div>
-
-                      {order.paymentReviewNote && <div className="admin-note-box danger">Motivo / observación: {order.paymentReviewNote}</div>}
-
-                      <div className="admin-order-actions">
-                        {order.status === 'PAYMENT_REVIEW' && (
-                          <>
-                            <button className="btn btn-primary" onClick={() => updateOrder(order.id, 'payment', 'approve')}>Confirmar pago</button>
-                            <button className="btn btn-light" onClick={() => { setRejectingId(order.id); setRejectNote(order.paymentReviewNote || '') }}>Rechazar pago</button>
-                          </>
-                        )}
-                        {nextAction && (
-                          <button className="btn btn-light" onClick={() => updateOrder(order.id, 'fulfillment', nextAction.value)}>{nextAction.label}</button>
-                        )}
-                      </div>
-
-                      {rejectingId === order.id && (
-                        <div className="admin-inline-review">
-                          <label>
-                            Motivo del rechazo
-                            <textarea value={rejectNote} onChange={e => setRejectNote(e.target.value)} placeholder="Ejemplo: no coincide el monto o no aparece el abono en Yape." />
-                          </label>
-                          <div className="admin-inline-actions">
-                            <button className="btn btn-light" onClick={() => { setRejectingId(null); setRejectNote('') }}>Cancelar</button>
-                            <button className="btn btn-primary" onClick={() => updateOrder(order.id, 'payment', 'reject', rejectNote || 'No coincide el abono informado')}>Confirmar rechazo</button>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                  )
-                })}
-                {!orders.length && !loading && <div className="table-empty">Todavía no hay pedidos registrados.</div>}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {activeView === 'products' && (
-          <div className="admin-view-stack">
-            <section className="admin-panel-card">
-              <div className="admin-section-heading between">
-                <div>
-                  <h2>Catálogo de productos</h2>
-                  <p>Desde aquí puedes crear, editar o eliminar productos del catálogo.</p>
-                </div>
-                <button className="btn btn-primary" onClick={openNew}>+ Nuevo producto</button>
-              </div>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Producto</th>
-                      <th>Categoría</th>
-                      <th>Precio</th>
-                      <th>Destacado</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map(product => (
-                      <tr key={product.id}>
-                        <td><span className="admin-product-name"><i>{product.imageUrl ? <img className="admin-table-image" src={product.imageUrl} alt="" /> : <span className="admin-table-placeholder">FG</span>}</i>{product.name}</span></td>
-                        <td>{product.category}</td>
-                        <td>{formatCurrency(product.price)}</td>
-                        <td>{product.featured ? 'Sí' : 'No'}</td>
-                        <td className="row-actions">
-                          <button onClick={() => openEdit(product)}>Editar</button>
-                          <button className="danger-link" onClick={() => removeProduct(product)}>Eliminar</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!products.length && !loading && <div className="table-empty">No hay productos todavía.</div>}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {activeView === 'profile' && (
-          <div className="admin-view-stack">
-            <section className="admin-profile-grid">
-              <article className="admin-panel-card">
-                <div className="admin-section-heading">
-                  <div>
-                    <h2>Perfil del administrador</h2>
-                    <p>Puedes personalizar el panel con tu nombre, celular y foto.</p>
-                  </div>
-                </div>
-                <form className="admin-profile-form" onSubmit={saveProfile}>
-                  <div className="admin-profile-preview">
-                    <div className="admin-avatar-large">
-                      {profileForm.avatarUrl ? <img src={profileForm.avatarUrl} alt="Vista previa de perfil" /> : <span>{initials}</span>}
-                    </div>
-                    <div>
-                      <label className="btn btn-light admin-upload-btn">
-                        Cargar foto
-                        <input type="file" accept="image/*" onChange={uploadAvatar} hidden />
-                      </label>
-                      <button type="button" className="text-link danger-link" onClick={() => setProfileForm(current => ({ ...current, avatarUrl: '' }))}>Quitar foto</button>
-                    </div>
-                  </div>
-                  <div className="form-grid">
-                    <label>
-                      Nombre visible
-                      <input value={profileForm.name} onChange={e => setProfileForm(current => ({ ...current, name: e.target.value }))} required maxLength="120" />
-                    </label>
-                    <label>
-                      Celular
-                      <input value={profileForm.phone} onChange={e => setProfileForm(current => ({ ...current, phone: e.target.value }))} pattern="[0-9]{9}" maxLength="9" placeholder="999888777" />
-                    </label>
-                  </div>
-                  <label>
-                    Foto de perfil (URL/base64)
-                    <textarea value={profileForm.avatarUrl} onChange={e => setProfileForm(current => ({ ...current, avatarUrl: e.target.value }))} rows="4" placeholder="Puedes pegar una URL o usar el botón para cargar la imagen." />
-                  </label>
-                  <div className="modal-actions">
-                    <button className="btn btn-primary" disabled={savingProfile}>{savingProfile ? 'Guardando…' : 'Guardar perfil'}</button>
-                  </div>
-                </form>
-              </article>
-
-              <article className="admin-panel-card">
-                <div className="admin-section-heading">
-                  <div>
-                    <h2>Configuración visible para pagos Yape</h2>
-                    <p>Estos datos vienen del backend para evitar confusiones en la web.</p>
-                  </div>
-                </div>
-                <div className="admin-yape-config-box">
-                  <div><small>Titular Yape</small><strong>{yapeConfig.owner || 'No configurado'}</strong></div>
-                  <div><small>Celular Yape</small><strong>{yapeConfig.phone || 'No configurado'}</strong></div>
-                  <div><small>QR cargado</small><strong>{yapeConfig.qrUrl ? 'Sí' : 'No'}</strong></div>
-                  <div className="admin-note-box">
-                    <strong>Cómo cambiarlo</strong>
-                    <p>Actualiza las variables del backend `YAPE_OWNER_NAME`, `YAPE_PHONE` y `YAPE_QR_URL`, luego reinicia el servidor.</p>
-                  </div>
-                </div>
-              </article>
-            </section>
-          </div>
-        )}
-      </section>
-
-      {editing && (
-        <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setEditing(null) }}>
-          <form className="product-modal" onSubmit={saveProduct}>
-            <div className="modal-head">
-              <div>
-                <span className="eyebrow">CATÁLOGO</span>
-                <h2>{editing === 'new' ? 'Nuevo producto' : 'Editar producto'}</h2>
-              </div>
-              <button type="button" onClick={() => setEditing(null)}>×</button>
-            </div>
-            <div className="form-grid">
-              <label>Nombre<input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></label>
-              <label>Categoría<select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}><option>Herramientas</option><option>Electricidad</option><option>Pintura</option><option>Construcción</option></select></label>
-              <label>Precio<input type="number" min="0.01" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required /></label>
-              <label>Precio anterior<input type="number" min="0.01" step="0.01" value={form.oldPrice} onChange={e => setForm({ ...form, oldPrice: e.target.value })} /></label>
-              <label className="admin-image-editor">Imagen del producto
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => handleProductImage(e)} />
-                <small>JPG, PNG o WebP, máximo 1 MB. También puedes usar una URL HTTPS.</small>
-                <input type="url" placeholder="https://.../producto.webp" value={form.imageUrl.startsWith('data:') ? '' : form.imageUrl} onChange={e => setForm(old => ({ ...old, imageUrl: e.target.value }))} />
-                {form.imageUrl && <img className="admin-product-preview" src={form.imageUrl} alt="Vista previa del producto" />}
-              </label>
-              <label>Valoración<input type="number" min="0" max="5" step="0.1" value={form.rating} onChange={e => setForm({ ...form, rating: e.target.value })} /></label>
-            </div>
-            <label className="check-line"><input type="checkbox" checked={form.featured} onChange={e => setForm({ ...form, featured: e.target.checked })} /> Mostrar como producto destacado</label>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-light" onClick={() => setEditing(null)}>Cancelar</button>
-              <button className="btn btn-primary">Guardar producto</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {toast && <div className="toast">✓ {toast}</div>}
-    </main>
-  )
-}
+finally {
+    setWorking(false);
+} } function openNew() { setEditing(null); setForm(blank); setModal(true); } function openEdit(p) { setEditing(p.id); setForm({ ...blank, ...p, categoryId: p.categoryId || '', initialStock: 0 }); setModal(true); } async function submit(e) { e.preventDefault(); await act(() => editing ? adminApi.put('/admin/products/' + editing, form) : adminApi.post('/admin/products', form), editing ? 'Producto actualizado' : 'Producto creado'); } const set = (field, value) => setForm(f => ({ ...f, [field]: value })); function close() { setModal(false); setAdjust(null); } function onPhoto(e) { const file = e.target.files?.[0]; if (!file)
+    return; setPhoto(URL.createObjectURL(file)); setPhotoResults([]); setMessage('Foto seleccionada. La identificación automática con IA se habilitará en la siguiente fase; por ahora busca por nombre o SKU.'); } const Sidebar = () => <aside className={'bg-[#EA580C] text-white border-r border-orange-600 w-[260px] shrink-0 flex-col h-[100dvh] overflow-y-auto overscroll-contain ' + (menuOpen ? 'flex fixed inset-y-0 left-0 z-50 shadow-xl' : 'hidden lg:flex')}>
+<Link to="/" className="min-h-[108px] flex items-center px-5" aria-label="Ir a la tienda">
+<Brand admin inverted />
+</Link>
+<div className="px-4 mt-5 space-y-1">{menu.map(([label, Icon]) => <button key={label} onClick={() => { setTab(label); setMenuOpen(false); setError(''); setMessage(''); }} className={'w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-[13px] font-semibold ' + (tab === label ? 'bg-white text-[#C2410C] shadow-sm' : 'text-white/90 hover:bg-white/15 hover:text-white')}>
+<Icon size={17}/>{label}
+</button>)}
+</div>
+<div className="mx-4 mt-6 border-t border-white/25 pt-5 space-y-2">
+<Link to="/" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold text-white/90 hover:bg-white/15 hover:text-white transition-colors">
+<ArrowUpFromLine size={17}/> Volver a la tienda
+</Link>
+<button onClick={async () => { await logout(); navigate('/admin/login'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold text-white/90 hover:bg-white/15 hover:text-white transition-colors">
+<LogOut size={17}/> Cerrar sesión
+</button>
+</div>
+</aside>; return <div className="h-[100dvh] flex overflow-hidden bg-white text-ink">
+<Sidebar />
+<div className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain bg-white">
+<header className="h-[96px] bg-white border-b border-slate-100 flex items-center justify-between px-5 md:px-9">
+<button className="lg:hidden" onClick={() => setMenuOpen(true)}>
+<Menu />
+</button>
+<div className="hidden lg:block text-sm text-slate-400">Panel de control <span className="mx-2">/</span> <b className="text-ink">{tab}
+</b>
+</div>
+<div className="ml-auto flex items-center gap-3">
+<span className="text-xs text-slate-500 hidden sm:inline">{user?.name}
+</span>
+<div className="w-9 h-9 grid place-items-center rounded-full bg-[#fff0e5] font-bold text-teal">{user?.name?.[0] || 'A'}
+</div>
+</div>
+</header>
+<main className="px-5 md:px-9 py-10 max-w-[1520px] mx-auto">
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 mb-8">
+<div>
+<p className="text-[11px] text-teal uppercase font-extrabold tracking-[.16em]">FERRETERÍA GUILLERMO</p>
+<h1 className="font-display text-3xl font-extrabold tracking-tight mt-2">{tab}
+</h1>
+<p className="text-slate-400 text-sm mt-2">{tab === 'Inventario' ? 'Controla tus productos y mantén el stock actualizado.' : tab === 'Registrar venta' ? 'Vende varios productos sin formularios complicados.' : tab === 'Pedidos' ? 'Revisa pedidos hechos desde la web.' : 'Información real de la ferretería.'}
+</p>
+</div>{tab === 'Inventario' && <button onClick={openNew} className="btn inline-flex items-center justify-center gap-2">
+<Plus size={17}/> Agregar producto</button>}
+</div>{error && <div className="bg-red-50 text-red-700 text-sm p-4 rounded-xl mb-6">{error}
+</div>}{message && <div className="bg-teal/10 text-teal text-sm p-4 rounded-xl mb-6">{message}
+</div>}{(tab === 'Resumen' || tab === 'Inventario') && <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-7">{[[Package, 'Productos', products.length], [Boxes, 'Unidades en stock', products.reduce((s, p) => s + p.stock, 0)], [AlertTriangle, 'Stock bajo', low.length], [ClipboardList, 'Pedidos pendientes', orders.filter(o => o.status === 'PENDING').length]].map(([Icon, label, value]) => <div key={label} className="bg-white border border-slate-100 rounded-2xl p-5 md:p-6">
+<div className="flex justify-between">
+<span className="text-slate-500 text-xs font-semibold">{label}
+</span>
+<Icon size={18} className="text-teal"/>
+</div>
+<p className="font-display text-3xl font-extrabold mt-4">{value}
+</p>
+</div>)}
+</div>}{tab === 'Inventario' && <>
+<div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+<div className="p-5 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<div>
+<h2 className="font-display text-lg font-extrabold">Productos del inventario <span className="text-slate-400 text-xs font-normal ml-1">({shown.length} productos)</span>
+</h2>
+<p className="text-slate-400 text-xs mt-1">Información sincronizada con PostgreSQL</p>
+</div>
+<label className="relative">
+<Search size={16} className="text-slate-400 absolute top-[13px] left-3"/>
+<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre o SKU" className="input pl-9 text-xs sm:w-64"/>
+</label>
+</div>
+<div className="overflow-auto">
+<table className="data-table w-full whitespace-nowrap">
+<thead className="bg-[#fafbfc]">
+<tr>{['Producto', 'Categoría', 'SKU', 'Stock', 'Precio', 'Estado', 'Acciones'].map(h => <th key={h}>{h}
+</th>)}
+</tr>
+</thead>
+<tbody>{shown.map(p => <tr key={p.id}>
+<td>
+<div className="flex items-center gap-3">
+<div className="w-11 h-11 picture-fallback rounded-lg grid place-items-center overflow-hidden">{p.imageUrl ? <img src={p.imageUrl} className="w-full h-full object-contain"/> : <Package size={18} className="text-slate-300"/>}
+</div>
+<b className="max-w-[190px] truncate">{p.name}
+</b>
+</div>
+</td>
+<td>{p.categoryName}
+</td>
+<td className="text-slate-500">{p.sku}
+</td>
+<td className="font-bold">{p.stock}
+</td>
+<td>{money(p.price)}
+</td>
+<td>
+<span className={'rounded-full px-2.5 py-1 text-[10px] font-bold ' + (p.stock === 0 ? 'bg-red-50 text-red-600' : p.stock <= p.minimumStock ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-700')}>{p.stock === 0 ? 'Agotado' : p.stock <= p.minimumStock ? 'Stock bajo' : 'Disponible'}
+</span>
+</td>
+<td>
+<div className="flex gap-3">
+<button title="Editar" className="text-slate-500 hover:text-teal" onClick={() => openEdit(p)}>
+<Edit3 size={17}/>
+</button>
+<button className="text-teal font-bold" onClick={() => { setQty('1'); setAdjust(p); }}>Stock</button>
+<button className="text-red-400" title="Desactivar" onClick={() => { if (window.confirm('¿Desactivar ' + p.name + '?'))
+    act(() => adminApi.delete('/admin/products/' + p.id), 'Producto desactivado'); }}>
+<Trash2 size={17}/>
+</button>
+</div>
+</td>
+</tr>)}
+</tbody>
+</table>
+</div>{!shown.length && <div className="text-center p-16">
+<Package size={40} className="mx-auto text-slate-300"/>
+<h3 className="text-lg font-bold mt-4">Aún no hay productos</h3>
+<p className="text-sm text-slate-400 mt-2">Comienza agregando el primer artículo de tu ferretería.</p>
+<button onClick={openNew} className="btn mt-5">Agregar producto</button>
+</div>}
+</div>
+<div className="mt-6 bg-white rounded-2xl border border-slate-100 p-6">
+<h3 className="font-display font-extrabold flex items-center gap-2">
+<Camera size={19} className="text-teal"/> Consulta por fotografía <span className="ml-auto text-[10px] rounded-full bg-amber-50 text-amber-700 px-3 py-1">Próximamente: IA</span>
+</h3>
+<p className="text-sm text-slate-500 my-3">Ya puedes seleccionar o tomar una foto desde el móvil. La identificación con IA se incorporará posteriormente; actualmente consulta por nombre o SKU.</p>
+<label className="btn-light inline-flex items-center gap-2">
+<Camera size={17}/> Tomar o subir foto<input type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto}/>
+</label>{photo && <img src={photo} alt="Foto tomada" className="rounded-lg mt-4 max-h-40"/>}
+</div></>}{tab === 'Resumen' && <div className="bg-white rounded-2xl p-8 border border-slate-100">
+<h2 className="font-display text-lg font-extrabold">Bienvenido al nuevo panel</h2>
+<p className="text-sm text-slate-500 mt-3">Empieza registrando los artículos reales en Inventario. Luego podrás registrar ventas de mostrador y revisar pedidos de la web.</p>
+<button onClick={() => setTab('Inventario')} className="btn mt-6">Ir al inventario</button>
+</div>}{tab === 'Registrar venta' && <QuickSale products={products} working={working} onSave={(payload) => act(() => adminApi.post('/admin/sales',payload), 'Venta registrada y stock actualizado')} />}{tab === 'Pedidos' && <div className="bg-white rounded-2xl border border-slate-100 overflow-auto">
+<table className="data-table w-full">
+<thead>
+<tr>{['Pedido', 'Cliente', 'Estado', 'Pago', 'Total', 'Acciones'].map(h => <th key={h}>{h}
+</th>)}
+</tr>
+</thead>
+<tbody>{orders.map(o => <tr key={o.id}>
+<td>#{o.id}
+</td>
+<td>{o.customerEmail}
+</td>
+<td>{o.status}
+</td>
+<td>{o.paymentMethod} / {o.paymentStatus}
+</td>
+<td>{money(o.total)}
+</td>
+<td>{o.status === 'PENDING' && <button className="text-teal font-bold" onClick={() => act(() => adminApi.post('/admin/orders/' + o.id + '/complete'), 'Pedido completado')}>Confirmar entrega y pago</button>}{o.status === 'PENDING' && <button className="text-red-500 font-bold ml-4" onClick={() => act(() => adminApi.post('/admin/orders/' + o.id + '/cancel'), 'Pedido cancelado')}>Cancelar</button>}
+</td>
+</tr>)}
+</tbody>
+</table>{!orders.length && <div className="p-16 text-slate-400 text-sm text-center">Todavía no hay pedidos.</div>}
+</div>}
+</main>
+</div>{(modal || adjust) && <div className="fixed z-50 inset-0 bg-slate-900/50 grid place-items-center p-4" onMouseDown={e => { if (e.target === e.currentTarget)
+    close(); }}>
+<div className="bg-white rounded-2xl max-w-lg w-full p-7 max-h-[90vh] overflow-auto">
+<div className="flex items-center justify-between">
+<h2 className="font-display text-xl font-extrabold">{adjust ? 'Actualizar stock' : editing ? 'Editar producto' : 'Agregar producto'}
+</h2>
+<button onClick={close}>
+<X size={20}/>
+</button>
+</div>{adjust ? <div className="mt-6">
+<p className="font-bold">{adjust.name}
+</p>
+<p className="text-sm text-slate-500 mt-1">Stock actual: {adjust.stock}
+</p>
+<label className="block mt-5 text-xs font-bold">Cantidad de unidades<input className="input mt-2" type="number" min="1" value={qty} onChange={e => setQty(e.target.value)}/>
+</label>
+<div className="flex gap-3 mt-6">
+<button disabled={working} className="btn flex-1" onClick={() => act(() => adminApi.post('/admin/inventory/movements', { productId: adjust.id, type: 'IN', quantity: Number(qty), reason: 'Ingreso de mercadería' }), 'Stock ingresado')}>+ Entrada</button>
+<button disabled={working} className="btn-light flex-1" onClick={() => act(() => adminApi.post('/admin/inventory/movements', { productId: adjust.id, type: 'OUT', quantity: Number(qty), reason: 'Ajuste por salida' }), 'Stock retirado')}>− Salida</button>
+</div>
+</div> : <form onSubmit={submit} className="mt-6 grid grid-cols-2 gap-4">
+<label className="col-span-2 text-xs font-bold">Nombre del producto<input required className="input mt-2" value={form.name} onChange={e => set('name', e.target.value)}/>
+</label>
+<label className="text-xs font-bold">SKU / código<input required className="input mt-2" value={form.sku} onChange={e => set('sku', e.target.value)}/>
+</label>
+<label className="text-xs font-bold">Categoría<select required className="input mt-2" value={form.categoryId} onChange={e => set('categoryId', e.target.value)}>
+<option value="">Selecciona</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}
+</option>)}
+</select>
+</label>
+<label className="text-xs font-bold">Precio (S/)<input required type="number" min="0" step="0.01" className="input mt-2" value={form.price} onChange={e => set('price', e.target.value)}/>
+</label>
+<label className="text-xs font-bold">Stock mínimo<input required type="number" min="0" className="input mt-2" value={form.minimumStock} onChange={e => set('minimumStock', e.target.value)}/>
+</label>{!editing && <label className="col-span-2 text-xs font-bold">Stock inicial<input required type="number" min="0" className="input mt-2" value={form.initialStock} onChange={e => set('initialStock', e.target.value)}/>
+</label>}
+<label className="col-span-2 text-xs font-bold">URL de imagen (o ruta /images/...)<input className="input mt-2" value={form.imageUrl || ''} onChange={e => set('imageUrl', e.target.value)}/>
+</label>
+<label className="col-span-2 text-xs font-bold">Descripción<textarea className="input mt-2 min-h-20" value={form.description || ''} onChange={e => set('description', e.target.value)}/>
+</label>
+<button disabled={working} className="btn col-span-2">{working ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear producto'}
+</button>
+</form>}
+</div>
+</div>}
+</div>; }

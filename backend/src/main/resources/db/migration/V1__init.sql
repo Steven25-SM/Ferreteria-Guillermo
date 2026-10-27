@@ -1,0 +1,12 @@
+CREATE TABLE app_users(id BIGSERIAL PRIMARY KEY, name VARCHAR(160) NOT NULL, email VARCHAR(255) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, role VARCHAR(16) NOT NULL CHECK(role IN ('ADMIN','CUSTOMER')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE categories(id BIGSERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE);
+CREATE TABLE products(id BIGSERIAL PRIMARY KEY, name VARCHAR(220) NOT NULL, sku VARCHAR(100) NOT NULL UNIQUE, description TEXT, category_id BIGINT NOT NULL REFERENCES categories(id), price NUMERIC(12,2) NOT NULL CHECK(price>=0), image_url TEXT, active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE inventory(product_id BIGINT PRIMARY KEY REFERENCES products(id), quantity INT NOT NULL DEFAULT 0 CHECK(quantity>=0), minimum_stock INT NOT NULL DEFAULT 5 CHECK(minimum_stock>=0));
+CREATE TABLE stock_movements(id BIGSERIAL PRIMARY KEY, product_id BIGINT NOT NULL REFERENCES products(id), actor_id BIGINT REFERENCES app_users(id), type VARCHAR(20) NOT NULL, quantity INT NOT NULL CHECK(quantity>0), reason TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE orders(id BIGSERIAL PRIMARY KEY, user_id BIGINT REFERENCES app_users(id), status VARCHAR(20) NOT NULL DEFAULT 'PENDING', total NUMERIC(12,2) NOT NULL, payment_method VARCHAR(20) NOT NULL, payment_status VARCHAR(20) NOT NULL DEFAULT 'PENDING', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE order_items(id BIGSERIAL PRIMARY KEY, order_id BIGINT NOT NULL REFERENCES orders(id), product_id BIGINT NOT NULL REFERENCES products(id), quantity INT NOT NULL CHECK(quantity>0), unit_price NUMERIC(12,2) NOT NULL);
+CREATE TABLE sales(id BIGSERIAL PRIMARY KEY, actor_id BIGINT REFERENCES app_users(id), total NUMERIC(12,2) NOT NULL, payment_method VARCHAR(20) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE sale_items(id BIGSERIAL PRIMARY KEY, sale_id BIGINT NOT NULL REFERENCES sales(id), product_id BIGINT NOT NULL REFERENCES products(id), quantity INT NOT NULL CHECK(quantity>0), unit_price NUMERIC(12,2) NOT NULL);
+CREATE INDEX idx_products_category ON products(category_id);CREATE INDEX idx_orders_status ON orders(status);CREATE INDEX idx_movements_product ON stock_movements(product_id);
+-- Únicamente categorías; no se crean productos ficticios.
+INSERT INTO categories(name) VALUES ('Herramientas'),('Electricidad'),('Pinturas'),('Construcción'),('Plomería'),('Seguridad'),('Otros');

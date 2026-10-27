@@ -1,1 +1,0 @@
-import { Navigate,useLocation } from 'react-router-dom';import {useAuth} from '../context/AuthContext';export default function CustomerRoute({children}){const{user,loading}=useAuth();const loc=useLocation();if(loading)return <main className="auth-loading">Verificando sesión…</main>;return user?.role==='CUSTOMER'?children:<Navigate to="/login" state={{from:loc}} replace/>}

@@ -1,70 +1,61 @@
 package com.ferreteriaguillermo.config;
-
+import com.ferreteriaguillermo.auth.User;
+import com.ferreteriaguillermo.auth.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import java.util.List;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
-
-@Configuration
-public class SecurityConfig {
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/login", "/api/auth/register", "/api/payments/config").permitAll()
-                .requestMatchers(HttpMethod.GET,"/api/recommendations").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET,"/api/quotes/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PATCH,"/api/quotes/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.POST,"/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT,"/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE,"/api/products/**").hasRole("ADMIN")
-                .requestMatchers("/api/orders/**").authenticated()
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/products", "/api/products/featured").permitAll()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/quotes").permitAll()
-                .requestMatchers("/api/auth/**").authenticated()
-                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/products/**").authenticated()
-                .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/products/**").authenticated()
-                .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/products/**").authenticated()
-                .anyRequest().permitAll()
-            )
-            .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable());
-        return http.build();
+@Configuration public class SecurityConfig {
+    @Bean PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
-
-    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}")
-    private String allowedOrigins;
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(java.util.Arrays.stream(allowedOrigins.split(",")).map(String::trim).filter(v -> !v.isEmpty()).toList());
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
-        return source;
+    @Bean UserDetailsService users(UserRepository repo) {
+        return email-> {
+            User u=repo.findByEmailIgnoreCase(email).orElseThrow(()->new org.springframework.security.core.userdetails.UsernameNotFoundException("Usuario no encontrado"));
+            return org.springframework.security.core.userdetails.User.withUsername(u.email).password(u.passwordHash).roles(u.role).build();
+        };
     }
-
-    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
-    @Bean AuthenticationManager authenticationManager(AuthenticationConfiguration c) throws Exception { return c.getAuthenticationManager(); }
-    @Bean SecurityContextRepository securityContextRepository() { return new HttpSessionSecurityContextRepository(); }
+    @Bean @org.springframework.core.annotation.Order(1)
+    SecurityFilterChain adminChain(HttpSecurity http, AdminTokenService tokens) throws Exception {
+        return http.securityMatcher("/api/admin/**")
+            .csrf(csrf -> csrf.disable()) // Desarrollo local: aplicar CSRF/controles adicionales antes de producción.
+            .sessionManagement(sm -> sm.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
+            .securityContext(sc -> sc.securityContextRepository(new org.springframework.security.web.context.NullSecurityContextRepository()))
+            .addFilterBefore(new AdminTokenFilter(tokens), org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(a -> a.anyRequest().hasRole("ADMIN"))
+            .formLogin(f -> f.disable()).httpBasic(b -> b.disable())
+            .exceptionHandling(e -> e.authenticationEntryPoint((req,res,ex)->res.sendError(401,"Acceso administrativo requerido")))
+            .build();
+    }
+    @Bean @org.springframework.core.annotation.Order(2)
+    SecurityFilterChain customerChain(HttpSecurity http) throws Exception {
+        return http.csrf(csrf -> csrf.disable()) // Desarrollo local: habilitar CSRF antes de desplegar.
+            .authorizeHttpRequests(a -> a.requestMatchers("/api/admin-auth/**", "/api/auth/login", "/api/auth/register", "/api/auth/logout").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories").permitAll()
+                .requestMatchers("/api/orders/**", "/api/auth/me", "/api/auth/profile", "/api/interactions", "/api/recommendations/**").hasRole("CUSTOMER")
+                .anyRequest().permitAll())
+            .formLogin(f->f.disable()).httpBasic(b->b.disable())
+            .exceptionHandling(e->e.authenticationEntryPoint((req,res,ex)->res.sendError(401,"No autorizado"))).build();
+    }
+    @Bean CommandLineRunner adminBootstrap(UserRepository repo,PasswordEncoder encoder,@Value("${ADMIN_INITIAL_PASSWORD:}")String password,@Value("${ADMIN_EMAIL:admin@ferreteriaguillermo.pe}")String email) {
+        return args-> {
+            if(repo.countByRole("ADMIN")==0) {
+                if(password.length()<12)throw new IllegalStateException("Define ADMIN_INITIAL_PASSWORD de al menos 12 caracteres antes del primer inicio.");
+                User u=new User();
+                u.name="Administrador";
+                u.email=email.toLowerCase();
+                u.passwordHash=encoder.encode(password);
+                u.role="ADMIN";
+                repo.save(u);
+            }
+        };
+    }
 }

@@ -1,63 +1,29 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import api from '../services/api'
-import ProductCard from '../components/ProductCard'
-
-export default function Catalog() {
-  const [products, setProducts] = useState([])
-  const [searchParams] = useSearchParams()
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState(searchParams.get('cat') || 'Todos')
-  const [sort, setSort] = useState('default')
-  const [maxPrice, setMaxPrice] = useState(500)
-
-  useEffect(() => {
-    api.get('/products').then(r => setProducts(r.data))
-  }, [])
-
-  const filtered = useMemo(() => {
-    let list = products.filter(p =>
-      (!search || p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase())) &&
-      (category === 'Todos' || p.category === category) &&
-      Number(p.price) <= maxPrice
-    )
-    if (sort === 'low') list.sort((a,b) => Number(a.price)-Number(b.price))
-    if (sort === 'high') list.sort((a,b) => Number(b.price)-Number(a.price))
-    if (sort === 'name') list.sort((a,b) => a.name.localeCompare(b.name))
-    return list
-  }, [products, search, category, sort, maxPrice])
-
-  const clear = () => {
-    setSearch('')
-    setCategory('Todos')
-    setSort('default')
-    setMaxPrice(500)
-  }
-
-  return <main>
-    <section className="page-hero"><div className="container"><span className="eyebrow">FERRETERÍA GUILLERMO</span><h1>Catálogo de productos</h1><p>Encuentra productos por nombre, categoría o precio.</p></div></section>
-    <section className="section container">
-      <div className="catalog-toolbar">
-        <div className="search-box">🔎<input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar producto..." /></div>
-        <select value={category} onChange={e => setCategory(e.target.value)}>
-          <option>Todos</option><option>Herramientas</option><option>Electricidad</option><option>Pintura</option><option>Construcción</option>
-        </select>
-        <select value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="default">Ordenar</option><option value="low">Precio menor</option><option value="high">Precio mayor</option><option value="name">Nombre A-Z</option>
-        </select>
-      </div>
-      <div className="catalog-layout">
-        <aside className="filter-panel">
-          <h3>Filtrar</h3><label>Precio máximo</label>
-          <input type="range" min="10" max="500" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
-          <div className="range-values"><span>S/ 10</span><b>S/ {maxPrice}</b></div>
-          <hr/><p className="muted">Selecciona un producto para agregarlo a tu cotización.</p>
-        </aside>
-        <div>
-          <div className="result-line"><span>{filtered.length} producto{filtered.length === 1 ? '' : 's'}</span><button className="text-link" onClick={clear}>Limpiar filtros</button></div>
-          <div className="product-grid">{filtered.map(p => <ProductCard key={p.id} product={p} />)}</div>
-        </div>
-      </div>
-    </section>
-  </main>
-}
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, SlidersHorizontal } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { api } from '../lib/api';
+import { trackInteraction } from '../lib/interactions';
+import { useAuth } from '../components/AuthContext';
+import { ProductGrid, EmptyProducts } from '../components/ProductGrid';
+export default function Catalog() { const { user } = useAuth(); const [params, setParams] = useSearchParams(); const [products, setProducts] = useState([]); const [categories, setCategories] = useState([]); const [search, setSearch] = useState(''); const [loading, setLoading] = useState(true); const category = params.get('categoria') || ''; useEffect(() => { Promise.all([api.get('/products'), api.get('/categories')]).then(([p, c]) => { setProducts(p.data); setCategories(c.data); }).catch(() => { }).finally(() => setLoading(false)); }, []); useEffect(() => { if (!user || search.trim().length < 2) return; const timer = setTimeout(() => trackInteraction('SEARCH', null, search.trim()), 900); return () => clearTimeout(timer); }, [search, user]); const visible = useMemo(() => products.filter(p => (!category || p.categoryName === category) && p.name.toLowerCase().includes(search.toLowerCase())), [category, search, products]); return <main>
+<div className="container-page pt-10 pb-9">
+<div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-5 justify-between">
+<div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+<button onClick={() => setParams({})} className={'px-4 py-2 rounded-full text-xs font-bold ' + (!category ? 'bg-teal text-white' : 'bg-slate-100 text-slate-600')}>Todos</button>{categories.map(c => <button key={c.id} onClick={() => setParams({ categoria: c.name })} className={'px-4 py-2 rounded-full text-xs font-bold ' + (category === c.name ? 'bg-teal text-white' : 'bg-slate-100 text-slate-600')}>{c.name}
+</button>)}
+</div>
+<label className="relative flex h-12 w-full lg:w-[275px] shrink-0 items-center overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-100">
+<Search size={19} aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/>
+<input type="search" aria-label="Buscar productos" className="h-full w-full min-w-0 border-0 bg-transparent py-2 pr-4 pl-12 text-sm text-slate-800 outline-none placeholder:text-slate-400" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar productos..."/>
+</label>
+</div>
+</div>
+<div className="container-page pb-24">
+<div className="border-b border-slate-100 pb-4 mb-7 flex justify-between items-center text-xs text-slate-500">
+<span>{loading ? 'Cargando productos...' : `${visible.length} productos`}
+</span>
+<span className="inline-flex items-center gap-2">
+<SlidersHorizontal size={16}/> Catálogo</span>
+</div>{visible.length ? <ProductGrid products={visible}/> : <EmptyProducts title={search ? 'No encontramos coincidencias' : 'Aún no hay productos en el catálogo'} description={search ? 'Prueba con otro nombre o categoría.' : 'Los productos que registres en el panel administrativo aparecerán aquí automáticamente.'}/>}
+</div>
+</main>; }

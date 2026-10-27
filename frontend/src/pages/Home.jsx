@@ -1,72 +1,92 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import api from '../services/api'
-import { useCart } from '../context/CartContext'
-import { useAuth } from '../context/AuthContext'
-import './home-v3.css'
-
-const categories = [
-  { name: 'Electricidad', description: 'Tomacorrientes, cables y cintas', image: '/reference/reference-2.jpg' },
-  { name: 'Herramientas', description: 'Taladros, discos y accesorios', image: '/reference/reference-3.jpg' },
-  { name: 'Pintura', description: 'Rodillos, brochas y sprays', image: '/reference/reference-4.jpg' },
-  { name: 'Plomería', description: 'Accesorios PVC y llaves', image: '/reference/reference-5.jpg' },
-  { name: 'Seguridad', description: 'Guantes y protección', image: '/reference/reference-6.jpg' },
-  { name: 'Cuerdas y hogar', description: 'Rafia, alambre y accesorios', image: '/reference/reference-7.jpg' },
-]
-const money = n => `S/ ${Number(n || 0).toFixed(2)}`
-
-export default function Home() {
-  const [products, setProducts] = useState([])
-  const [recommended, setRecommended] = useState([])
-  const [selected, setSelected] = useState('Todos')
-  const [query, setQuery] = useState('')
-  const [error, setError] = useState(false)
-  const [drawer, setDrawer] = useState(false)
-  const [justAdded, setJustAdded] = useState(null)
-  const { cart, count, total, addToCart, changeQty, removeItem } = useCart()
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    api.get('/products').then(r => setProducts(r.data || [])).catch(() => setError(true))
-    api.get('/recommendations').then(r => { const data = r.data; setRecommended(Array.isArray(data) ? data : Array.isArray(data?.products) ? data.products : []) }).catch(() => {})
-  }, [])
-
-  const filtered = useMemo(() => {
-    const base = recommended.length && selected === 'Todos' && !query ? recommended : products
-    return base.filter(p => (selected === 'Todos' || p.category === selected) && (!query || `${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase()))).slice(0, 8)
-  }, [products, recommended, selected, query])
-
-  const add = p => {addToCart(p); setJustAdded(p.id); window.setTimeout(() => setJustAdded(null), 1300)}
-  const selectCategory = name => {setSelected(name);document.getElementById('fg-best')?.scrollIntoView({behavior:'smooth', block:'start'})}
-  const featured = products.find(p => /set profesional 108/i.test(p.name)) || products.find(p=>p.featured) || products[0]
-
-  return <div className="fg-v3">
-    <header className="fg-site-header"><div className="fg-wrap fg-nav">
-      <Link to="/" className="fg-logo"><i/>FERRETERÍA GUILLERMO</Link>
-      <nav><a href="#fg-categorias">Catálogo</a><a href="#fg-como">Cómo comprar</a><a href="#fg-ayuda">Pedidos</a></nav>
-      <form onSubmit={e=>{e.preventDefault();document.getElementById('fg-best')?.scrollIntoView({behavior:'smooth'})}} className="fg-search">
-        <input aria-label="Buscar productos" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar productos..."/><button aria-label="Buscar" type="submit">⌕</button>
-      </form>
-      {user ? <button className="fg-account" onClick={async()=>{await logout();navigate('/')}}>Salir</button> : <Link className="fg-account" to="/login">Ingresar</Link>}
-      <button className="fg-cart-btn" onClick={()=>setDrawer(true)} aria-label={`Abrir carrito con ${count} productos`}><svg className="fg-cart-icon" xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.2 12.3a2 2 0 0 0 2 1.7h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg><span>Carrito</span><b>{count}</b></button>
-    </div></header>
-    <main>
-      <div className="fg-hero"><div className="fg-wrap fg-hero-content">
-        <div className="fg-copy"><h1>TODO PARA CONSTRUIR <span>MEJOR.</span></h1><p>Electricidad, plomería, pintura, herramientas y más. Compra desde el catálogo en pocos pasos.</p><div className="fg-actions"><a className="fg-btn" href="#fg-categorias">Ver catálogo</a><Link className="fg-btn outline" to="/carrito">Hacer un pedido</Link></div></div>
-        <aside className="fg-deal"><div><small>OFERTA SEMANAL</small><h2>{featured?.name || 'Set profesional 108 piezas'}</h2></div><div className="fg-deal-price"><b>{money(featured?.price ?? 129.9)}</b>{featured?.oldPrice && <s>{money(featured.oldPrice)}</s>}</div><button className="fg-btn" onClick={()=>featured && add(featured)} disabled={!featured}>{featured ? (justAdded === featured.id?'Agregado ✓':'Agregar al carrito'):'Ver catálogo'}</button></aside>
-      </div></div>
-      <div className="fg-band"><div className="fg-wrap">{[['Catálogo amplio','Productos por categoría'],['Pedidos','Compra desde tu carrito'],['Pago por Yape','Verificamos tu pago'],['Atención directa','Contacto con la ferretería']].map(([title,desc])=><div key={title}><b>{title}</b><span>{desc}</span></div>)}</div></div>
-      <section className="fg-section" id="fg-categorias"><div className="fg-wrap"><div className="fg-section-head"><h2>CATEGORÍAS</h2><button className="fg-link" onClick={()=>selectCategory('Todos')}>Ver todo el catálogo</button></div><div className="fg-cats">{categories.map((c,i)=><button key={c.name} className="fg-cat" style={{backgroundImage:`linear-gradient(90deg,rgba(8,13,17,.83),rgba(8,13,17,.17)),url('${c.image}')`}} onClick={()=>selectCategory(c.name)}><span>{String(i+1).padStart(2,'0')}</span><div><h3>{c.name}</h3><small>{c.description}</small></div></button>)}</div></div></section>
-      <section className="fg-section" id="fg-best"><div className="fg-wrap"><div className="fg-section-head"><div><h2>{selected==='Todos'?'MÁS VENDIDOS':selected.toUpperCase()}</h2><p>{selected==='Todos'?'Productos recomendados según las compras registradas.':'Explora los productos disponibles de esta categoría.'}</p></div>{selected!=='Todos'&&<button className="fg-link" onClick={()=>setSelected('Todos')}>Ver todos</button>}</div>
-      {error && <p className="fg-notice">No se pudo conectar con el catálogo. Comprueba que el backend esté funcionando.</p>}
-      <div className="fg-products">{filtered.map(p=><article className="fg-product" key={p.id}><div className="fg-product-photo">{p.imageUrl ? <img src={p.imageUrl} alt={p.name} loading="lazy"/> : <div className="fg-photo-fallback">FERRETERÍA<br/>GUILLERMO</div>}{p.oldPrice && <span className="fg-offer">OFERTA</span>}</div><div className="fg-product-info"><small>{p.category}</small><h3>{p.name}</h3><div className="fg-price"><b>{money(p.price)}</b>{p.oldPrice && <s>{money(p.oldPrice)}</s>}</div><button className={justAdded===p.id?'fg-add added':'fg-add'} onClick={()=>add(p)}>{justAdded===p.id?'Agregado ✓':'Agregar al carrito'}</button></div></article>)}{!filtered.length && !error && <div className="fg-notice">{products.length?'No encontramos productos con esos filtros.':'Cargando productos...'}</div>}</div>
-      </div></section>
-      <section className="fg-section" id="fg-como"><div className="fg-wrap"><div className="fg-section-head"><h2>CÓMO COMPRAR</h2></div><div className="fg-steps">{[['PASO 1','ELIGE','Busca por nombre o entra a una categoría.'],['PASO 2','ARMA TU CARRITO','Agrega todo lo de tu obra y ajusta cantidades.'],['PASO 3','PAGA CON YAPE','Envía tu pago y lo verificamos para confirmar tu pedido.']].map(([step,title,desc])=><div className="fg-step" key={step}><b>{step}</b><h3>{title}</h3><p>{desc}</p></div>)}</div></div></section>
-      <section className="fg-section" id="fg-ayuda"><div className="fg-wrap"><div className="fg-quote"><div><h2>¿NECESITAS VARIOS PRODUCTOS?</h2><p>Reúne los artículos que necesitas en tu carrito y genera un solo pedido para pagar por Yape.</p></div><Link className="fg-btn" to="/carrito">Ir al carrito</Link></div></div></section>
-    </main>
-    <footer className="fg-footer"><div className="fg-wrap"><b>FERRETERÍA GUILLERMO</b><div className="fg-footer-meta"><span>Horario: lunes a sábado · 8:00 a 19:00</span><span>© {new Date().getFullYear()} Todos los derechos reservados</span></div></div></footer>
-    <div className={'fg-shade'+(drawer?' open':'')} onClick={()=>setDrawer(false)} />
-    <aside className={'fg-drawer'+(drawer?' open':'')} aria-hidden={!drawer}><div className="fg-drawer-head"><h2>TU CARRITO</h2><button onClick={()=>setDrawer(false)} aria-label="Cerrar carrito">×</button></div><div className="fg-drawer-items">{cart.length?cart.map(p=><div className="fg-drawer-item" key={p.id}><div><strong>{p.name}</strong><small>{money(p.price)} c/u</small></div><div className="fg-qty"><button onClick={()=>changeQty(p.id,-1)}>−</button><span>{p.qty}</span><button onClick={()=>changeQty(p.id,1)}>+</button></div><button className="fg-remove" onClick={()=>removeItem(p.id)}>×</button></div>):<p>Aún no agregaste productos.</p>}</div><div className="fg-drawer-foot"><div><strong>Total</strong><strong>{money(total)}</strong></div><Link className="fg-btn" to="/carrito" onClick={()=>setDrawer(false)}>Pagar con Yape</Link><small>Verificamos tu pago antes de confirmar el pedido.</small></div></aside>
-  </div>
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, CheckCircle2, MapPin, PackageCheck, ShieldCheck, Truck, Phone, Lightbulb, Hammer, Wrench, Paintbrush, PlugZap } from 'lucide-react';
+import { api } from '../lib/api';
+import { ProductGrid, EmptyProducts } from '../components/ProductGrid';
+import { useAuth } from '../components/AuthContext';
+import HeroCarousel from '../components/HeroCarousel';
+// Fotografías AMBIENTALES por categoría, nunca fotografías individuales de productos.
+// Puedes reemplazarlas por imágenes propias en public/images/categories/.
+const categoryPhotos = {
+  Electricidad: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1100&q=85',
+  Pinturas: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=1100&q=85',
+  Seguridad: 'https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=1100&q=85',
+  Herramientas: 'https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=1100&q=85',
+  Construcción: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1100&q=85',
+  Plomería: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1100&q=85',
+  Otros: 'https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?auto=format&fit=crop&w=1100&q=85',
+};
+const categoryPalette = ['#e8e4d1','#f3c7b8','#ead0b8','#d8ded0'];
+function CategoryShowcase(){
+  const [categories,setCategories]=useState([]);
+  const [offset,setOffset]=useState(0);
+  const [hovering,setHovering]=useState(false);
+  const [interacted,setInteracted]=useState(false);
+  useEffect(()=>{let live=true;api.get('/categories').then(r=>{if(live)setCategories(r.data||[])}).catch(()=>{});return()=>{live=false}},[]);
+  const count=categories.length;
+  const rotate=(direction)=>{if(count>4)setOffset(v=>(v+direction+count)%count);setInteracted(true)};
+  useEffect(()=>{if(count<=4||hovering)return;const timer=window.setInterval(()=>setOffset(v=>(v+1)%count),6500);return()=>window.clearInterval(timer)},[count,hovering]);
+  const visible=count?Array.from({length:Math.min(4,count)},(_,i)=>categories[(offset+i)%count]):[];
+  return <section className="container-page py-20 md:py-24" aria-label="Categorías de productos" onMouseEnter={()=>setHovering(true)} onMouseLeave={()=>setHovering(false)}>
+    <h2 className="font-display font-extrabold text-3xl md:text-[42px] text-center tracking-tight mb-10">¿Qué estás buscando hoy?</h2>
+    <div className="relative">
+      <div key={offset} className="grid grid-cols-2 lg:grid-cols-4 gap-5 md:gap-7 animate-[fadeIn_.65s_ease-out]">
+      {visible.map((c,i)=><Link key={c.id} to={'/catalogo?categoria='+encodeURIComponent(c.name)} className="group text-center">
+        <div className="relative aspect-square overflow-hidden rounded-2xl transition-transform duration-300 group-hover:-translate-y-1" style={{backgroundColor:categoryPalette[i%4]}}>
+          {categoryPhotos[c.name]?<img src={categoryPhotos[c.name]} alt={'Ambiente de '+c.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />:<div className="absolute inset-0 bg-gradient-to-br from-[#e6c7af] to-[#bdb4a7]" />}
+        </div>
+        <h3 className="mt-5 font-display font-semibold uppercase text-xs sm:text-sm tracking-wide text-slate-800 group-hover:text-[#EA580C]">{c.name}</h3>
+      </Link>)}
+      </div>
+      {count>4&&<>
+        <button type="button" aria-label="Categorías anteriores" onClick={()=>rotate(-1)} className="absolute left-1 top-[33%] z-10 flex h-11 w-11 -translate-x-1/3 items-center justify-center rounded-full border border-white/60 bg-[#192632]/45 text-white backdrop-blur-sm transition hover:bg-[#192632]/70 md:-translate-x-1/2"><svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button type="button" aria-label="Categorías siguientes" onClick={()=>rotate(1)} className="absolute right-1 top-[33%] z-10 flex h-11 w-11 translate-x-1/3 items-center justify-center rounded-full border border-white/60 bg-[#192632]/45 text-white backdrop-blur-sm transition hover:bg-[#192632]/70 md:translate-x-1/2"><svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+      </>}
+    </div>
+    <div className="mt-7 text-center"><Link to="/catalogo" className="text-[#EA580C] text-sm font-bold inline-flex items-center gap-2">Ver todas las categorías <ArrowRight size={16}/></Link></div>
+  </section>
 }
+export default function Home() { const { user } = useAuth(); const [featured, setFeatured] = useState([]); useEffect(() => { api.get(user ? '/products/recommended' : '/products/best-sellers').then(r => setFeatured((r.data || []).slice(0, 4))).catch(() => setFeatured([])); }, [user]); return <>
+<HeroCarousel />
+<CategoryShowcase />
+<section className="bg-[#fffaf5] py-20">
+<div className="container-page">
+<div className="flex justify-between items-end mb-9">
+<div>
+<span className="text-[11px] uppercase tracking-[.23em] text-teal font-extrabold">SELECCIÓN PARA TI</span>
+<h2 className="font-display font-extrabold text-3xl md:text-4xl tracking-tight mt-2">{user ? 'Recomendados para ti' : 'Más vendidos'}
+</h2>
+</div>
+<Link to="/catalogo" className="text-teal text-sm font-bold flex items-center gap-2">Ver todo <ArrowRight size={15}/>
+</Link>
+</div>{featured.length ? <ProductGrid products={featured}/> : <EmptyProducts title={user ? 'Estamos preparando tus recomendaciones' : 'Todavía no hay productos más vendidos'} description={user ? 'Explora productos o busca lo que necesitas para descubrir sugerencias relacionadas con tus intereses.' : 'Esta sección se llenará automáticamente cuando se registren ventas completadas.'}/>}
+</div>
+</section>
+<section id="ventajas" className="container-page py-20">
+<div className="grid md:grid-cols-3 gap-6">{[[PackageCheck, 'Consulta sin complicaciones', 'Elige lo que necesitas y envía tu lista por WhatsApp para consultar disponibilidad.'], [ShieldCheck, 'Atención cercana', 'Te ayudamos a encontrar el producto adecuado para tus proyectos.'], [Lightbulb, 'Lo que realmente necesitas', 'Herramientas y materiales para el hogar, obra y mantenimiento.']].map(([Icon, title, desc]) => <div key={title} className="rounded-2xl border p-7 border-slate-100">
+<Icon size={31} className="text-teal"/>
+<h3 className="mt-5 font-display font-extrabold text-lg">{title}
+</h3>
+<p className="mt-3 text-sm text-slate-500 leading-6">{desc}
+</p>
+</div>)}
+</div>
+</section>
+<section id="contacto" className="bg-[#152a32] text-white py-16">
+<div className="container-page flex flex-col md:flex-row justify-between gap-8">
+<div>
+<span className="text-orange-300 uppercase tracking-widest text-xs font-bold">FERRETERÍA GUILLERMO</span>
+<h2 className="font-display text-3xl font-extrabold mt-3">Estamos para ayudarte.</h2>
+<p className="text-slate-300 text-sm mt-3">Visítanos y consulta la disponibilidad de tus productos favoritos.</p>
+</div>
+<div className="space-y-3 text-sm">
+<p className="flex gap-3 items-center">
+<MapPin size={18}/> Dirección del local: por configurar</p>
+<p className="flex gap-3 items-center">
+<Phone size={18}/> Número de contacto: por configurar</p>
+</div>
+</div>
+</section>
+<footer className="bg-[#102229] text-slate-400 text-xs py-5">
+<div className="container-page">© {new Date().getFullYear()} Ferretería Guillermo · Hecho para servir mejor.</div>
+</footer></>; }
